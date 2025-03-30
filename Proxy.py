@@ -78,6 +78,7 @@ while True:
   URI = requestParts[1]
   version = requestParts[2]
 
+  # this prints out the extracted info from the request
   print ('Method:\t\t' + method)
   print ('URI:\t\t' + URI)
   print ('Version:\t' + version)
@@ -111,7 +112,7 @@ while True:
 
     fileExists = os.path.isfile(cacheLocation)
     
-    # Check wether the file is currently in the cache
+    # Check whether the file is currently in the cache
     cacheFile = open(cacheLocation, "r")
     cacheData = cacheFile.readlines()
 
@@ -119,6 +120,8 @@ while True:
     # ProxyServer finds a cache hit
     # Send back response to client 
     # ~~~~ INSERT CODE ~~~~
+    for line in cacheData: # this will send every line of the cached file back to the client
+      clientSocket.send(line.encode())
     # ~~~~ END CODE INSERT ~~~~
     cacheFile.close()
     print ('Sent to the client:')
@@ -129,6 +132,7 @@ while True:
     # Create a socket to connect to origin server
     # and store in originServerSocket
     # ~~~~ INSERT CODE ~~~~
+    originServerSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # this sets up a new socket to establish a connection with the original website the client is trying to reach
     # ~~~~ END CODE INSERT ~~~~
 
     print ('Connecting to:\t\t' + hostname + '\n')
@@ -137,6 +141,8 @@ while True:
       address = socket.gethostbyname(hostname)
       # Connect to the origin server
       # ~~~~ INSERT CODE ~~~~
+      originServerSocket.connect((address, 80)) # this will tell the socket to go connect with the web server at hostname using the port = 80
+      # using port 80 because its the default port for web server using HTTP
       # ~~~~ END CODE INSERT ~~~~
       print ('Connected to origin Server')
 
@@ -147,6 +153,8 @@ while True:
       # originServerRequest is the first line in the request and
       # originServerRequestHeader is the second line in the request
       # ~~~~ INSERT CODE ~~~~
+      originServerRequest = method + ' ' + resource + ' ' + version # this will construct the request line pf an HTTP request
+      originServerRequestHeader = 'Host: ' + hostname # this builds a host header which is required in HTTp requests so the server knows what site its asking for
       # ~~~~ END CODE INSERT ~~~~
 
       # Construct the request to send to the origin server
@@ -167,10 +175,13 @@ while True:
 
       # Get the response from the origin server
       # ~~~~ INSERT CODE ~~~~
+      response = originServerSocket.recv(BUFFER_SIZE)
+      # this tells proxy to receive resposnse from origin server
       # ~~~~ END CODE INSERT ~~~~
 
       # Send the response to the client
       # ~~~~ INSERT CODE ~~~~
+      clientSocket.send(response) # this takes the response from the origin server and sends it to the client that made the request
       # ~~~~ END CODE INSERT ~~~~
 
       # Create a new file in the cache for the requested file.
@@ -182,6 +193,7 @@ while True:
 
       # Save origin server response in the cache file
       # ~~~~ INSERT CODE ~~~~
+      cacheFile.write(response) # will write the response into a new file at cacheLocation
       # ~~~~ END CODE INSERT ~~~~
       cacheFile.close()
       print ('cache file closed')
