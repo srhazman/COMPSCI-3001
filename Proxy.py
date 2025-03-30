@@ -211,7 +211,7 @@ while True:
 
       # Send the response to the client
       # ~~~~ INSERT CODE ~~~~
-      clientSocket.send(response) # this takes the response from the origin server and sends it to the client that made the request
+      clientSocket.sendall(response) # this takes the response from the origin server and sends it to the client that made the request
       # ~~~~ END CODE INSERT ~~~~
 
       # Create a new file in the cache for the requested file.
