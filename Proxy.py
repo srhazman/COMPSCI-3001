@@ -21,6 +21,7 @@ try:
   # Create a server socket
   # ~~~~ INSERT CODE ~~~~
   serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # af_inet specifies ipv4 and sock_stream specifies tcp
+  # this produces a socket obj that can be used to connect to a server
   # ~~~~ END CODE INSERT ~~~~
   print ('Created socket')
 except:
@@ -175,8 +176,37 @@ while True:
 
       # Get the response from the origin server
       # ~~~~ INSERT CODE ~~~~
-      response = originServerSocket.recv(BUFFER_SIZE)
-      # this tells proxy to receive resposnse from origin server
+      response = b'' # initialised response as byte strg so that it can append the data received from the server
+      
+      # this will loop until recv() returns an empty strg, this means the server has closed the connection.
+      while True: 
+        data = originServerSocket.recv(BUFFER_SIZE)
+        if not data:
+          break
+        response += data # this will append the data received from server 
+      
+      # handle redirects and cache the response
+      # this decodes the response into a readable strg and extracts the first line of HTTP response
+      status_line = response.decode(errors='ignore').split('\r\n')[0]
+      # i got the idea to use decode() from https://docs.python.org/3/howto/unicode.html
+      print('Status line: ', status_line) # this will print the HTTP status code which is used to decide if it should be cached.
+
+      should_cache = False
+      # 301 redirects are deigned to be cached and 302 are typically not cached
+      if '200' in status_line or '301' in status_line:
+        should_cache = True
+      elif '302' in status_line:
+        print("302 redirect found. Skipping cached response.")
+
+      headers = response.decode(errors='ignore').split('\r\n\r\n')[0] # this extracts HTTP headers block which is everything before the body of response
+      # using split() to seperate the header from the body, [0] will get headers 
+      # errors='ignore' is used so it doesnt crash on invalid characters and just ignores them
+      cache_ctrl = re.search(r'Cache Control:. *max-age = (\d+)', headers) # this line uses regular expression to search the headers string for a line 
+      # re.search = https://docs.python.org/3/library/re.html
+      if cache_ctrl:
+        max_age = int(cache_ctrl.group(1)) # this extracts the max-age value from the headers and turns it into an integer
+        print(f'Max age detected: {max_age} seconds')
+
       # ~~~~ END CODE INSERT ~~~~
 
       # Send the response to the client
@@ -193,7 +223,11 @@ while True:
 
       # Save origin server response in the cache file
       # ~~~~ INSERT CODE ~~~~
-      cacheFile.write(response) # will write the response into a new file at cacheLocation
+      if should_cache:
+        cacheFile.write(response) # will write the response into a new file at cacheLocation
+      else:
+        print("Not caching response due to 302 or invaled cache status.")
+        cacheFile.write(b'')
       # ~~~~ END CODE INSERT ~~~~
       cacheFile.close()
       print ('cache file closed')
